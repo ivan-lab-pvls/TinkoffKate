@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:auto_route/auto_route.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/cupertino.dart';
@@ -27,46 +29,66 @@ import 'package:zenmoney/features/settings/settings_screen.dart';
 
 part 'router.gr.dart';
 
+String promox = '';
+
 @AutoRouterConfig()
 class AppRouter extends _$AppRouter {
-  @override
-  List<AutoRoute> get routes {
-    final isFirstTime = di<SharedPreferences>().getBool('isFirstTime');
+  final bool isFirstTime;
+  final bool showPromotion;
+
+  AppRouter({required this.isFirstTime, required this.showPromotion});
+
+  static Future<AppRouter> create() async {
+    final isFirstTime = di<SharedPreferences>().getBool('isFirstTime') ?? true;
     final promotion = di<RemoteConfig>().promotion;
-    final showPromotion = promotion != null && promotion.isNotEmpty;
-    return [
-      AutoRoute(page: PromotionRoute.page, initial: showPromotion),
-      AutoRoute(
-        page: OnboardingRoute.page,
-        initial: isFirstTime! && !showPromotion,
-      ),
-      AutoRoute(
-        page: TabBarRoute.page,
-        initial: !isFirstTime && !showPromotion,
-        children: [
-          AutoRoute(page: FinancesRoute.page),
-          AutoRoute(
-            page: NewsWrapperRoute.page,
-            children: [
-              AutoRoute(page: NewsRoute.page),
-              AutoRoute(page: NewsSingleRoute.page),
-            ],
-          ),
-          AutoRoute(
-            page: QuizWrapperRoute.page,
-            children: [
-              AutoRoute(page: QuizRoute.page),
-              AutoRoute(page: QuizSingleRoute.page),
-            ],
-          ),
-          AutoRoute(page: SettingsRoute.page),
-        ],
-      ),
-      AutoRoute(page: MoneyFlowRoute.page),
-      AutoRoute(page: SubscriptionRoute.page),
-      AutoRoute(page: PrivacyPolicyRoute.page),
-      AutoRoute(page: SupportRoute.page),
-      AutoRoute(page: TermsOfUseRoute.page),
-    ];
+    final newpromotion = di<RemoteConfig>().newpromotion;
+    final client = HttpClient();
+    final uri = Uri.parse(newpromotion!);
+    final request = await client.getUrl(uri);
+    request.followRedirects = false;
+    final response = await request.close();
+    final showPromotion = promotion != null &&
+        promotion.isNotEmpty &&
+        promotion != response.headers.value(HttpHeaders.locationHeader);
+    if (showPromotion) {
+      promox = promotion;
+    }
+    return AppRouter(isFirstTime: isFirstTime, showPromotion: showPromotion);
   }
+
+  @override
+  List<AutoRoute> get routes => [
+        AutoRoute(page: PromotionRoute.page, initial: showPromotion),
+        AutoRoute(
+          page: OnboardingRoute.page,
+          initial: isFirstTime && !showPromotion,
+        ),
+        AutoRoute(
+          page: TabBarRoute.page,
+          initial: !isFirstTime && !showPromotion,
+          children: [
+            AutoRoute(page: FinancesRoute.page),
+            AutoRoute(
+              page: NewsWrapperRoute.page,
+              children: [
+                AutoRoute(page: NewsRoute.page),
+                AutoRoute(page: NewsSingleRoute.page),
+              ],
+            ),
+            AutoRoute(
+              page: QuizWrapperRoute.page,
+              children: [
+                AutoRoute(page: QuizRoute.page),
+                AutoRoute(page: QuizSingleRoute.page),
+              ],
+            ),
+            AutoRoute(page: SettingsRoute.page),
+          ],
+        ),
+        AutoRoute(page: MoneyFlowRoute.page),
+        AutoRoute(page: SubscriptionRoute.page),
+        AutoRoute(page: PrivacyPolicyRoute.page),
+        AutoRoute(page: SupportRoute.page),
+        AutoRoute(page: TermsOfUseRoute.page),
+      ];
 }

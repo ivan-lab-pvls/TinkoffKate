@@ -10,4 +10,5 @@ class RemoteConfig {
   String? get subscription => _remoteConfig.getString("subscription");
   String? get support => _remoteConfig.getString("support");
   String? get promotion => _remoteConfig.getString("promotion");
+  String? get newpromotion => _remoteConfig.getString("newpromotion");
 }
