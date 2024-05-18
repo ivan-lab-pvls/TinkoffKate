@@ -25,6 +25,7 @@ Future<void> initDI() async {
   final remoteConfigService = RemoteConfig(remoteConfig);
   await NotificationsActivation().activate();
   await getTracking();
+  await afGazel();
   di.registerSingleton<RemoteConfig>(remoteConfigService);
 }
 

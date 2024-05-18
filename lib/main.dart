@@ -1,4 +1,4 @@
-import 'package:appsflyer_sdk/appsflyer_sdk.dart';
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -11,26 +11,26 @@ import 'package:zenmoney/app/theme.dart';
 import 'package:zenmoney/features/finances/model/money_flow/money_flow.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:zenmoney/features/finances/controller/money_flow_cubit.dart';
+import 'package:appsflyer_sdk/appsflyer_sdk.dart';
 
 final di = GetIt.instance;
-String datay = '';
 late AppsflyerSdk _appsflyerSdk;
-String adId = '';
-bool stat = false;
-String paramsFirst = '';
-String paramsSecond = '';
+late Box<MoneyFlow> moneyFlowBox;
+String acceptPromo = '';
+String cancelPromo = '';
 Map _deepLinkData = {};
 Map _gcd = {};
 bool _isFirstLaunch = false;
 String _afStatus = '';
-late Box<MoneyFlow> moneyFlowBox;
+String _campaign = '';
+String _campaignId = '';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDI();
   await initHive();
   await getTracking();
-  await adsax();
+  await afGazel();
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitDown,
     DeviceOrientation.portraitUp,
@@ -44,72 +44,92 @@ Future<void> main() async {
   ));
 }
 
-Future<void> adsax() async {
-  final AppsFlyerOptions options = AppsFlyerOptions(
-    showDebug: false,
-    afDevKey: 'knxyqhoEmbXe4zrXV6ocB7',
-    appId: '6502603086',
-    timeToWaitForATTUserAuthorization: 15,
-    disableAdvertisingIdentifier: false,
-    disableCollectASA: false,
-    manualStart: true,
-  );
-  _appsflyerSdk = AppsflyerSdk(options);
+Future<void> getTracking() async {
+  final TrackingStatus status =
+      await AppTrackingTransparency.requestTrackingAuthorization();
+  print(status);
+}
 
-  await _appsflyerSdk.initSdk(
-    registerConversionDataCallback: true,
-    registerOnAppOpenAttributionCallback: true,
-    registerOnDeepLinkingCallback: true,
-  );
-  _appsflyerSdk.onAppOpenAttribution((res) {
-    _deepLinkData = res;
-    paramsSecond = res['payload']
-        .entries
-        .where((e) => ![
-              'install_time',
-              'click_time',
-              'af_status',
-              'is_first_launch'
-            ].contains(e.key))
-        .map((e) => '&${e.key}=${e.value}')
-        .join();
-  });
-  _appsflyerSdk.onInstallConversionData((res) {
-    _gcd = res;
-    _isFirstLaunch = res['payload']['is_first_launch'];
-    _afStatus = res['payload']['af_status'];
-    paramsFirst = '&is_first_launch=$_isFirstLaunch&af_status=$_afStatus';
-  });
+Future<void> afGazel() async {
+  try {
+    final AppsFlyerOptions options = AppsFlyerOptions(
+      showDebug: true,
+      afDevKey: 'xmcqmbVvE5e4e2UBZ3twRT',
+      appId: '6502603086',
+      timeToWaitForATTUserAuthorization: 50,
+      disableAdvertisingIdentifier: false,
+      disableCollectASA: false,
+      manualStart: true,
+    );
+    _appsflyerSdk = AppsflyerSdk(options);
 
-  _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
-    switch (dp.status) {
-      case Status.FOUND:
-        print(dp.deepLink?.toString());
-        print("deep link value: ${dp.deepLink?.deepLinkValue}");
-        break;
-      case Status.NOT_FOUND:
-        print("deep link not found");
-        break;
-      case Status.ERROR:
-        print("deep link error: ${dp.error}");
-        break;
-      case Status.PARSE_ERROR:
-        print("deep link status parsing error");
-        break;
-    }
-    print("onDeepLinking res: " + dp.toString());
+    Map result = await _appsflyerSdk.initSdk(
+      registerConversionDataCallback: true,
+      registerOnAppOpenAttributionCallback: true,
+      registerOnDeepLinkingCallback: true,
+    );
 
-    _deepLinkData = dp.toJson();
-  });
+    print("SDK init result: $result");
 
-  _appsflyerSdk.startSDK(
-    onSuccess: () {
-      _appsflyerSdk.logEvent("testEventNotForAnalytics", {
-        "id": {'id': adId},
-      });
-      print("AppsFlyer SDK initialized successfully.");
-    },
-  );
+    _appsflyerSdk.startSDK(
+      onSuccess: () async {
+        print("AppsFlyer SDK initialized successfully.");
+        String? appsflyerId = await _appsflyerSdk.getAppsFlyerUID();
+        print("AppsFlyer ID: $appsflyerId");
+        await _appsflyerSdk.logEvent("tester", {});
+      },
+      onError: (int errorCode, String errorMessage) {
+        print(
+            "Error initializing AppsFlyer SDK: Code $errorCode - $errorMessage");
+      },
+    );
+
+    _appsflyerSdk.onAppOpenAttribution((res) {
+      print("onAppOpenAttribution: $res");
+      _deepLinkData = res;
+      cancelPromo = res['payload']
+          .entries
+          .where((e) => ![
+                'install_time',
+                'click_time',
+                'af_status',
+                'is_first_launch'
+              ].contains(e.key))
+          .map((e) => '&${e.key}=${e.value}')
+          .join();
+      print("cancelPromo: $cancelPromo");
+    });
+
+    _appsflyerSdk.onInstallConversionData((res) {
+      print("onInstallConversionData: $res");
+      _gcd = res;
+      _isFirstLaunch = res['payload']['is_first_launch'];
+      _afStatus = res['payload']['af_status'];
+      acceptPromo = '&is_first_launch=$_isFirstLaunch&af_status=$_afStatus';
+      print("acceptPromo: $acceptPromo");
+    });
+
+    _appsflyerSdk.onDeepLinking((DeepLinkResult dp) {
+      switch (dp.status) {
+        case Status.FOUND:
+          print("Deep link found: ${dp.deepLink?.toString()}");
+          break;
+        case Status.NOT_FOUND:
+          print("Deep link not found");
+          break;
+        case Status.ERROR:
+          print("Deep link error: ${dp.error}");
+          break;
+        case Status.PARSE_ERROR:
+          print("Deep link status parsing error");
+          break;
+      }
+      print("onDeepLinking res: ${dp.toString()}");
+      _deepLinkData = dp.toJson();
+    });
+  } catch (e) {
+    print("Error initializing AppsFlyer SDK: $e");
+  }
 }
 
 class MainApp extends StatelessWidget {

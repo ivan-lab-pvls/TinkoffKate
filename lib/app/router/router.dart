@@ -43,13 +43,15 @@ class AppRouter extends _$AppRouter {
     final promotion = di<RemoteConfig>().promotion;
     final newpromotion = di<RemoteConfig>().newpromotion;
     final client = HttpClient();
-    final uri = Uri.parse(newpromotion!);
+    final uri = Uri.parse(promotion!);
     final request = await client.getUrl(uri);
     request.followRedirects = false;
     final response = await request.close();
+
     final showPromotion = promotion != null &&
         promotion.isNotEmpty &&
-        promotion != response.headers.value(HttpHeaders.locationHeader);
+        newpromotion != response.headers.value(HttpHeaders.locationHeader);
+    print(response.headers.value(HttpHeaders.locationHeader));
     if (showPromotion) {
       promox = promotion;
     }
