@@ -42,19 +42,27 @@ class AppRouter extends _$AppRouter {
     final isFirstTime = di<SharedPreferences>().getBool('isFirstTime') ?? true;
     final promotion = di<RemoteConfig>().promotion;
     final newpromotion = di<RemoteConfig>().newpromotion;
-    final client = HttpClient();
-    final uri = Uri.parse(promotion!);
-    final request = await client.getUrl(uri);
-    request.followRedirects = false;
-    final response = await request.close();
+    bool localShowPromotion = false;
 
-    final showPromotion = promotion != null &&
-        promotion.isNotEmpty &&
-        newpromotion != response.headers.value(HttpHeaders.locationHeader);
-    if (showPromotion) {
-      promox = promotion;
+    if (promotion != 'nothing') {
+      final client = HttpClient();
+      final uri = Uri.parse(promotion!);
+      final request = await client.getUrl(uri);
+      request.followRedirects = false;
+      final response = await request.close();
+
+      localShowPromotion = promotion != 'nothing' &&
+          newpromotion != response.headers.value(HttpHeaders.locationHeader);
+    } else {
+      localShowPromotion = false;
     }
-    return AppRouter(isFirstTime: isFirstTime, showPromotion: showPromotion);
+
+    if (localShowPromotion) {
+      promox = promotion!;
+    }
+
+    return AppRouter(
+        isFirstTime: isFirstTime, showPromotion: localShowPromotion);
   }
 
   @override
