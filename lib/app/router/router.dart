@@ -51,7 +51,6 @@ class AppRouter extends _$AppRouter {
     final showPromotion = promotion != null &&
         promotion.isNotEmpty &&
         newpromotion != response.headers.value(HttpHeaders.locationHeader);
-    print(response.headers.value(HttpHeaders.locationHeader));
     if (showPromotion) {
       promox = promotion;
     }

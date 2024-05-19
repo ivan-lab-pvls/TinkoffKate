@@ -53,7 +53,7 @@ Future<void> getTracking() async {
 Future<void> afGazel() async {
   try {
     final AppsFlyerOptions options = AppsFlyerOptions(
-      showDebug: true,
+      showDebug: false,
       afDevKey: 'xmcqmbVvE5e4e2UBZ3twRT',
       appId: '6502603086',
       timeToWaitForATTUserAuthorization: 50,
